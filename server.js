@@ -204,18 +204,19 @@ const BusStand = require('./models/BusStand');
 app.get('/api/seed-stands', async (req, res) => {
     try {
         const vadodaraStands = [
-            { name: "Vadodara Central Bus Station (GSRTC)", lat: 22.3129, lng: 73.1812, isDepot: true },
-            { name: "Nyay Mandir", lat: 22.2994, lng: 73.2081, isDepot: false },
-            { name: "Makarpura Bus Depot", lat: 22.2536, lng: 73.1947, isDepot: true },
-            { name: "Amit Nagar Circle", lat: 22.3357, lng: 73.1950, isDepot: false },
-            { name: "Airport Circle (Harni)", lat: 22.3361, lng: 73.2263, isDepot: false },
-            { name: "Gotri", lat: 22.3243, lng: 73.1444, isDepot: false },
-            { name: "Karelibaug", lat: 22.3175, lng: 73.1995, isDepot: false },
-            { name: "Manjalpur", lat: 22.2746, lng: 73.1916, isDepot: false },
-            // Parul University & Nearby
-            { name: "Parul University Main Gate", lat: 22.287809577883444, lng: 73.36489100751052, isDepot: false },
-            { name: "Limda Bus Stand", lat: 22.2910, lng: 73.3550, isDepot: false },
-            { name: "Waghodia Chokdi", lat: 22.2980, lng: 73.2360, isDepot: false }
+            { name: "Parul University Main Gate", lat: 22.287752183364006, lng: 73.36460548199916, isDepot: false },
+            { name: "Waghodia Chowkdi", lat: 22.296264437767192, lng: 73.25546737367722, isDepot: false },
+            { name: "Waghodia GIDC", lat: 22.293686752482376, lng: 73.38832022372544, isDepot: false },
+            { name: "Limda", lat: 22.281620492187294, lng: 73.36495973188809, isDepot: false },
+            { name: "Madheli", lat: 22.267171123976684, lng: 73.37669189425795, isDepot: false },
+            { name: "Sumandeep", lat: 22.293104890196275, lng: 73.32095502801857, isDepot: false },
+            { name: "Vadodara Junction", lat: 22.310107655753864, lng: 73.18211593528066, isDepot: true },
+            { name: "Vrundavan Chowkadi", lat: 22.300178192711872, lng: 73.23868661694327, isDepot: false },
+            { name: "Umma Chowkadi", lat: 22.300850675414004, lng: 73.23032173473486, isDepot: false },
+            { name: "Mandvi Gate", lat: 22.300246486254412, lng: 73.21096677203695, isDepot: false },
+            { name: "Sur Sagar lake", lat: 22.300094254370055, lng: 73.20553592280895, isDepot: false },
+            { name: "Kala Ghoda Circle", lat: 22.30863684679467, lng: 73.18841724821846, isDepot: false },
+            { name: "Pavagadh Hills", lat: 22.462859111546006, lng: 73.52515166322463, isDepot: false }
         ];
 
         // Clear existing and insert new (reset)
