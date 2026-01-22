@@ -135,6 +135,50 @@ app.get('/api/buses', async (req, res) => {
     }
 });
 
+// Bus Account & Authentication Routes
+const BusAccount = require('./models/BusAccount');
+
+// Seed Bus Accounts (bus001 to bus020)
+app.get('/api/admin/seed-buses', async (req, res) => {
+    try {
+        const busAccounts = [];
+        for (let i = 1; i <= 20; i++) {
+            const id = `bus${String(i).padStart(3, '0')}`;
+            busAccounts.push({ busId: id, password: id });
+        }
+
+        // Reset and Seed
+        await BusAccount.deleteMany({});
+        await BusAccount.insertMany(busAccounts);
+
+        res.json({ success: true, message: 'Seeded 20 bus accounts (bus001 - bus020)', accounts: busAccounts });
+    } catch (error) {
+        console.error("Seed Error:", error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Driver App: Login
+app.post('/api/bus/login', async (req, res) => {
+    try {
+        const { busId, password } = req.body;
+
+        if (!busId || !password) {
+            return res.status(400).json({ success: false, message: 'Bus ID and Password required' });
+        }
+
+        const bus = await BusAccount.findOne({ busId });
+        if (!bus || bus.password !== password) {
+            return res.status(401).json({ success: false, message: 'Invalid Credentials' });
+        }
+
+        res.json({ success: true, message: 'Login Successful' });
+    } catch (error) {
+        console.error("Login Error:", error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // Bus Stand Routes
 const BusStand = require('./models/BusStand');
 
