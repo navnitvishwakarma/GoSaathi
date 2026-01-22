@@ -138,6 +138,114 @@ app.get('/api/buses', async (req, res) => {
 // Bus Account & Authentication Routes
 const BusAccount = require('./models/BusAccount');
 
+// Conductor Auth Routes
+const Conductor = require('./models/Conductor');
+
+// 1. Send OTP (Simulated)
+app.post('/api/conductor/login', async (req, res) => {
+    try {
+        const { mobile } = req.body;
+        if (!mobile) return res.status(400).json({ success: false, message: 'Mobile number required' });
+
+        // Generate Mock OTP
+        const otp = "1234";
+
+        // Upsert Conductor
+        await Conductor.findOneAndUpdate(
+            { mobile },
+            { otp, isVerified: false }, // Reset verification
+            { upsert: true, new: true }
+        );
+
+        console.log(`OTP for ${mobile}: ${otp}`);
+        res.json({ success: true, message: 'OTP Sent (Use 1234)', otp }); // Returning OTP for easy testing
+    } catch (error) {
+        console.error("Conductor Login Error:", error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// 2. Verify OTP
+app.post('/api/conductor/verify', async (req, res) => {
+    try {
+        const { mobile, otp } = req.body;
+        const conductor = await Conductor.findOne({ mobile });
+
+        if (!conductor || conductor.otp !== otp) {
+            return res.status(400).json({ success: false, message: 'Invalid OTP' });
+        }
+
+        // Mark verified
+        conductor.isVerified = true;
+        conductor.otp = null; // Clear OTP
+        await conductor.save();
+
+        res.json({ success: true, message: 'Login Successful', conductor });
+    } catch (error) {
+        console.error("OTP Verify Error:", error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// 3. Update Profile
+app.post('/api/conductor/profile', async (req, res) => {
+    try {
+        const { mobile, name, age, gender, address } = req.body;
+        const conductor = await Conductor.findOneAndUpdate(
+            { mobile },
+            { name, age, gender, address },
+            { new: true }
+        );
+        res.json({ success: true, conductor });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Conductor App: Update Crowd Level
+app.post('/api/bus/crowd', async (req, res) => {
+    try {
+        const { busId, crowdLevel } = req.body;
+
+        if (!busId || !crowdLevel) {
+            return res.status(400).json({ success: false, message: 'Bus ID and Crowd Level required' });
+        }
+
+        const allowedLevels = ['Low', 'Medium', 'High'];
+        if (!allowedLevels.includes(crowdLevel)) {
+            return res.status(400).json({ success: false, message: 'Invalid Crowd Level' });
+        }
+
+        const updatedBus = await Bus.findOneAndUpdate(
+            { busId: busId },
+            { crowdLevel: crowdLevel, lastUpdated: Date.now() },
+            { new: true }
+        );
+
+        if (!updatedBus) {
+            // If bus doesn't exist in live table (only instantiated via driver), usually we might want to create it or error.
+            // For now, let's assume it exists or create placeholder
+            return res.status(404).json({ success: false, message: 'Bus not found (Start Driver App first)' });
+        }
+
+        res.json({ success: true, message: `Crowd updated to ${crowdLevel}`, bus: updatedBus });
+    } catch (error) {
+        console.error("Crowd Update Error:", error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Conductor App: Verify Ticket (Mock)
+app.post('/api/ticket/verify', (req, res) => {
+    const { ticketId, busId } = req.body;
+    // Mock Logic: If ticket ID starts with "VALID", it's valid.
+    if (ticketId && ticketId.startsWith("TICKET")) {
+        res.json({ success: true, message: "Ticket Verified Successfully", valid: true });
+    } else {
+        res.json({ success: false, message: "Invalid or Expired Ticket", valid: false });
+    }
+});
+
 // Route Visualization (Mock Data)
 app.get('/api/routes', (req, res) => {
     // Mock Route: Vadodara Central Bus Station -> Manjalpur (Approximate Tracing)
