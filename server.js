@@ -138,6 +138,24 @@ app.get('/api/buses', async (req, res) => {
 // Bus Account & Authentication Routes
 const BusAccount = require('./models/BusAccount');
 
+// Route Visualization (Mock Data)
+app.get('/api/routes', (req, res) => {
+    // Mock Route: Vadodara Central Bus Station -> Manjalpur (Approximate Tracing)
+    // Detailed points to show "Turns" on the map
+    const routePoints = [
+        { lat: 22.3129, lng: 73.1812 }, // Start: Central Bus Station
+        { lat: 22.3125, lng: 73.1815 }, // Exit Depot
+        { lat: 22.3100, lng: 73.1815 }, // Go South
+        { lat: 22.3100, lng: 73.1850 }, // Turn East (Turn 1)
+        { lat: 22.3050, lng: 73.1850 }, // Go South
+        { lat: 22.3000, lng: 73.1900 }, // Diagonal/Turn
+        { lat: 22.2900, lng: 73.1900 }, // Keep South
+        { lat: 22.2800, lng: 73.1920 }, // Slight Shift
+        { lat: 22.2746, lng: 73.1916 }  // End: Manjalpur
+    ];
+    res.json({ success: true, points: routePoints });
+});
+
 // Seed Bus Accounts (bus001 to bus020)
 app.get('/api/admin/seed-buses', async (req, res) => {
     try {
