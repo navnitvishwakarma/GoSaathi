@@ -312,7 +312,8 @@ const BusStand = require('./models/BusStand');
 app.get('/api/seed-stands', async (req, res) => {
     try {
         const vadodaraStands = [
-            { name: "Parul University Main Gate", lat: 22.287752183364006, lng: 73.36460548199916, isDepot: false },
+            
+            { name: "Parul University Main Gate", lat: 22.287538347164414, lng: 73.36499295939116, isDepot: false },
             { name: "Waghodia Chowkdi", lat: 22.296264437767192, lng: 73.25546737367722, isDepot: false },
             { name: "Waghodia GIDC", lat: 22.293686752482376, lng: 73.38832022372544, isDepot: false },
             { name: "Limda", lat: 22.281620492187294, lng: 73.36495973188809, isDepot: false },
