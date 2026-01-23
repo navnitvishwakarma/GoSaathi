@@ -6,6 +6,7 @@ const busSchema = new mongoose.Schema({
     lng: { type: Number, required: true },
     speed: { type: Number, default: 0 },
     crowdLevel: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Low' },
+    currentPassengers: { type: Number, default: 0 },
     routeId: { type: String },
     lastUpdated: { type: Date, default: Date.now }
 });

@@ -120,17 +120,24 @@ app.post('/api/bus/location', async (req, res) => {
     }
 });
 
-// Passenger App: Get Active Buses (Updated in last 5 mins)
+// Passenger App: Get Active Buses
 app.get('/api/buses', async (req, res) => {
     try {
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-
-        // Find buses updated recently
         const activeBuses = await Bus.find({ lastUpdated: { $gte: fiveMinutesAgo } });
-
         res.json({ success: true, buses: activeBuses });
     } catch (error) {
-        console.error("Fetch Buses Error:", error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Get Specific Bus State (Poll/Init)
+app.get('/api/bus/:busId', async (req, res) => {
+    try {
+        const bus = await Bus.findOne({ busId: req.params.busId });
+        if (!bus) return res.status(404).json({ success: false, message: 'Bus not found' });
+        res.json({ success: true, bus });
+    } catch (error) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
@@ -140,6 +147,7 @@ const BusAccount = require('./models/BusAccount');
 
 // Conductor Auth Routes
 const Conductor = require('./models/Conductor');
+const Route = require('./models/Route');
 
 // 1. Send OTP (Simulated)
 app.post('/api/conductor/login', async (req, res) => {
@@ -202,33 +210,46 @@ app.post('/api/conductor/profile', async (req, res) => {
     }
 });
 
-// Conductor App: Update Crowd Level
+// Conductor App: Update Crowd Level & Passenger Count
 app.post('/api/bus/crowd', async (req, res) => {
     try {
-        const { busId, crowdLevel } = req.body;
+        const { busId, crowdLevel, passengerCount } = req.body;
 
-        if (!busId || !crowdLevel) {
-            return res.status(400).json({ success: false, message: 'Bus ID and Crowd Level required' });
+        if (!busId) {
+            return res.status(400).json({ success: false, message: 'Bus ID required' });
+        }
+
+        // Auto-calculate Crowd Level if count is provided
+        let newCrowdLevel = crowdLevel;
+        let finalCount = passengerCount;
+
+        if (passengerCount !== undefined) {
+            if (passengerCount < 30) newCrowdLevel = 'Low';
+            else if (passengerCount < 50) newCrowdLevel = 'Medium';
+            else newCrowdLevel = 'High';
         }
 
         const allowedLevels = ['Low', 'Medium', 'High'];
-        if (!allowedLevels.includes(crowdLevel)) {
-            return res.status(400).json({ success: false, message: 'Invalid Crowd Level' });
+        if (newCrowdLevel && !allowedLevels.includes(newCrowdLevel)) {
+            // Fallback if provided level is invalid but count wasn't
+            newCrowdLevel = 'Low';
         }
+
+        const updateData = { lastUpdated: Date.now() };
+        if (newCrowdLevel) updateData.crowdLevel = newCrowdLevel;
+        if (finalCount !== undefined) updateData.currentPassengers = finalCount;
 
         const updatedBus = await Bus.findOneAndUpdate(
             { busId: busId },
-            { crowdLevel: crowdLevel, lastUpdated: Date.now() },
-            { new: true }
+            updateData,
+            { new: true, upsert: true } // Upsert to ensure bus exists
         );
 
-        if (!updatedBus) {
-            // If bus doesn't exist in live table (only instantiated via driver), usually we might want to create it or error.
-            // For now, let's assume it exists or create placeholder
-            return res.status(404).json({ success: false, message: 'Bus not found (Start Driver App first)' });
-        }
-
-        res.json({ success: true, message: `Crowd updated to ${crowdLevel}`, bus: updatedBus });
+        res.json({
+            success: true,
+            message: `Count updated to ${finalCount}. Level: ${newCrowdLevel}`,
+            bus: updatedBus
+        });
     } catch (error) {
         console.error("Crowd Update Error:", error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -246,21 +267,56 @@ app.post('/api/ticket/verify', (req, res) => {
     }
 });
 
-// Route Visualization (Mock Data)
-app.get('/api/routes', (req, res) => {
-    // ... existing mock route ...
-    const routePoints = [
-        { lat: 22.3129, lng: 73.1812 }, // Start: Central Bus Station
-        { lat: 22.3125, lng: 73.1815 }, // Exit Depot
-        { lat: 22.3100, lng: 73.1815 }, // Go South
-        { lat: 22.3100, lng: 73.1850 }, // Turn East (Turn 1)
-        { lat: 22.3050, lng: 73.1850 }, // Go South
-        { lat: 22.3000, lng: 73.1900 }, // Diagonal/Turn
-        { lat: 22.2900, lng: 73.1900 }, // Keep South
-        { lat: 22.2800, lng: 73.1920 }, // Slight Shift
-        { lat: 22.2746, lng: 73.1916 }  // End: Manjalpur
-    ];
-    res.json({ success: true, points: routePoints });
+// Route Visualization (Real Data)
+app.get('/api/routes', async (req, res) => {
+    try {
+        const routes = await Route.find();
+        res.json({ success: true, routes });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Seed Routes (Vadodara)
+app.get('/api/routes/seed', async (req, res) => {
+    try {
+        const routePoints7A = [
+            { lat: 22.3129, lng: 73.1812, name: "Central Bus Station" },
+            { lat: 22.3125, lng: 73.1815 },
+            { lat: 22.3100, lng: 73.1815 },
+            { lat: 22.3100, lng: 73.1850 }, // Turn 1
+            { lat: 22.3050, lng: 73.1850 },
+            { lat: 22.3000, lng: 73.1900 },
+            { lat: 22.2900, lng: 73.1900 },
+            { lat: 22.2800, lng: 73.1920 },
+            { lat: 22.2746, lng: 73.1916, name: "Manjalpur" }
+        ];
+
+        const routes = [
+            {
+                routeId: "7A",
+                name: "Station -> Manjalpur",
+                source: "Central Bus Station",
+                destination: "Manjalpur",
+                checkpoints: routePoints7A
+            },
+            {
+                routeId: "503",
+                name: "Manjalpur -> Station",
+                source: "Manjalpur",
+                destination: "Central Bus Station",
+                checkpoints: [...routePoints7A].reverse() // Reverse for return trip
+            }
+        ];
+
+        await Route.deleteMany({});
+        await Route.insertMany(routes);
+
+        res.json({ success: true, message: 'Seeded Routes 7A & 503', routes });
+    } catch (error) {
+        console.error("Seed Route Error:", error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Smart Route Suggestion API
@@ -294,7 +350,7 @@ app.post('/api/routes/suggest', async (req, res) => {
             // Baseline: 60km/h = 100pts. 
             let speedScore = Math.min(100, (speed / 60) * 100);
 
-        
+
             // Random ETA between 2-20 mins for demo
             const etaMins = Math.floor(Math.random() * 18) + 2;
             let etaScore = etaMins < 5 ? 100 : (etaMins < 15 ? 50 : 0);
