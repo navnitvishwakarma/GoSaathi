@@ -248,8 +248,7 @@ app.post('/api/ticket/verify', (req, res) => {
 
 // Route Visualization (Mock Data)
 app.get('/api/routes', (req, res) => {
-    // Mock Route: Vadodara Central Bus Station -> Manjalpur (Approximate Tracing)
-    // Detailed points to show "Turns" on the map
+    // ... existing mock route ...
     const routePoints = [
         { lat: 22.3129, lng: 73.1812 }, // Start: Central Bus Station
         { lat: 22.3125, lng: 73.1815 }, // Exit Depot
@@ -262,6 +261,77 @@ app.get('/api/routes', (req, res) => {
         { lat: 22.2746, lng: 73.1916 }  // End: Manjalpur
     ];
     res.json({ success: true, points: routePoints });
+});
+
+// Smart Route Suggestion API
+app.post('/api/routes/suggest', async (req, res) => {
+    try {
+        const { origin, dest } = req.body; // Expects { lat, lng } objects
+
+        // 1. Get Active Buses
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const activeBuses = await Bus.find({ lastUpdated: { $gte: fiveMinutesAgo } });
+
+        if (activeBuses.length === 0) {
+            return res.json({ success: true, routes: [], message: "No active buses found" });
+        }
+
+        // 2. Mock Duration/Distance Calculation (In real app, use Google Matrix API)
+        // We will simulate variability based on bus speed
+        const suggestions = activeBuses.map(bus => {
+            const speed = bus.speed || 30; // km/h
+            const distKm = 5.2; // Mock distance for Vadodara demo
+            const manualDurationMins = Math.round((distKm / speed) * 60);
+
+            // Crowd Score (0-100)
+            let crowdScore = 0;
+            let crowdLabel = "High Crowd";
+            if (bus.crowdLevel === 'Low') { crowdScore = 100; crowdLabel = "Low Crowd"; }
+            else if (bus.crowdLevel === 'Medium') { crowdScore = 50; crowdLabel = "Medium Crowd"; }
+            else { crowdScore = 0; crowdLabel = "High Crowd"; }
+
+            // Speed Score (0-100)
+            // Baseline: 60km/h = 100pts. 
+            let speedScore = Math.min(100, (speed / 60) * 100);
+
+        
+            // Random ETA between 2-20 mins for demo
+            const etaMins = Math.floor(Math.random() * 18) + 2;
+            let etaScore = etaMins < 5 ? 100 : (etaMins < 15 ? 50 : 0);
+
+            // Final Smart Score
+            // Weights: Crowd(40%), Speed(40%), ETA(20%)
+            const totalScore = (crowdScore * 0.4) + (speedScore * 0.4) + (etaScore * 0.2);
+
+            return {
+                busId: bus.busId,
+                totalScore: Math.round(totalScore),
+                crowdLevel: bus.crowdLevel,
+                duration: `${manualDurationMins} min`,
+                eta: `${etaMins} min`,
+                speed: speed,
+                badges: [
+                    crowdScore === 100 ? "Low Crowd" : null,
+                    speedScore > 80 ? "Fastest" : null,
+                    etaMins < 5 ? "Arriving Soon" : null
+                ].filter(Boolean)
+            };
+        });
+
+        // 3. Sort by Smart Score
+        suggestions.sort((a, b) => b.totalScore - a.totalScore);
+
+        // 4. Mark Best Choice
+        if (suggestions.length > 0) {
+            suggestions[0].isBestChoice = true;
+        }
+
+        res.json({ success: true, routes: suggestions });
+
+    } catch (error) {
+        console.error("Smart Route Error:", error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Seed Bus Accounts (bus001 to bus020)
@@ -312,7 +382,7 @@ const BusStand = require('./models/BusStand');
 app.get('/api/seed-stands', async (req, res) => {
     try {
         const vadodaraStands = [
-            
+
             { name: "Parul University Main Gate", lat: 22.287538347164414, lng: 73.36499295939116, isDepot: false },
             { name: "Waghodia Chowkdi", lat: 22.296264437767192, lng: 73.25546737367722, isDepot: false },
             { name: "Waghodia GIDC", lat: 22.293686752482376, lng: 73.38832022372544, isDepot: false },
