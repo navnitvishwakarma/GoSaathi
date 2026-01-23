@@ -467,7 +467,19 @@ app.get('/api/seed-stands', async (req, res) => {
             { name: "Mandvi Gate", lat: 22.300246486254412, lng: 73.21096677203695, isDepot: false },
             { name: "Sur Sagar lake", lat: 22.300094254370055, lng: 73.20553592280895, isDepot: false },
             { name: "Kala Ghoda Circle", lat: 22.30863684679467, lng: 73.18841724821846, isDepot: false },
-            { name: "Pavagadh Hills", lat: 22.462859111546006, lng: 73.52515166322463, isDepot: false }
+            { name: "Pavagadh Hills", lat: 22.462859111546006, lng: 73.52515166322463, isDepot: false },
+            // New Stands
+            { name: "Panigate S.T. Depot", lat: 22.299695790808784, lng: 73.21911148320916, isDepot: true },
+            { name: "Makarpura Central Bus Station", lat: 22.249426999980358, lng: 73.19706849901746, isDepot: true },
+            { name: "Nizampura S.T. Bus Depot", lat: 22.340034691881215, lng: 73.17893589504659, isDepot: true },
+            { name: "Hari Nagar Bus Stop", lat: 22.315957, lng: 73.160974, isDepot: false },
+            { name: "INOX Bus Stop", lat: 15.499349094451468, lng: 73.82038001206644, isDepot: false }, // Note: Coordinates seem to be Goa? Keeping as requested.
+            { name: "Dumad Bus Stop", lat: 22.367559, lng: 73.185396, isDepot: false },
+            { name: "Vemali Bus Stop", lat: 22.346293904222428, lng: 73.20208385128092, isDepot: false },
+            { name: "Ankhol Bus Stop", lat: 22.312203, lng: 73.28395, isDepot: false },
+            { name: "Motinagar Bus Station", lat: 22.312587985896254, lng: 73.22349920457776, isDepot: false },
+            { name: "Bhutadizampa Bus Station", lat: 22.30748971408953, lng: 73.20707146902312, isDepot: false },
+            { name: "KIA Motor Chokdi", lat: 22.347508839564597, lng: 73.17470434689639, isDepot: false }
         ];
 
         // Clear existing and insert new (reset)
