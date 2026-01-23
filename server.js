@@ -101,8 +101,8 @@ app.post('/api/bus/location', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing bus_id, lat, or lng' });
         }
 
-        // Upsert: Update if exists, Create if not
-        await Bus.findOneAndUpdate(
+        // 1. Update Bus Location
+        const bus = await Bus.findOneAndUpdate(
             { busId: bus_id },
             {
                 lat,
@@ -113,12 +113,84 @@ app.post('/api/bus/location', async (req, res) => {
             { upsert: true, new: true }
         );
 
-        res.json({ success: true, message: 'Location updated' });
+        // 2. Check for Automated Drop-offs
+        // Find if bus is near any Bus Stand (within 200m)
+        const stands = await BusStand.find();
+        let dropOffCount = 0;
+        let standName = null;
+
+        for (const stand of stands) {
+            const distKm = getDistanceFromLatLonInKm(lat, lng, stand.lat, stand.lng);
+            if (distKm < 0.2) { // 200 meters
+                standName = stand.name;
+
+                // Find active tickets for this bus going to this stand
+                const ticketsToDrop = await Ticket.find({
+                    busId: bus_id,
+                    destination: stand.name,
+                    isActive: true
+                });
+
+                if (ticketsToDrop.length > 0) {
+                    dropOffCount = ticketsToDrop.length;
+
+                    // Deactivate tickets
+                    await Ticket.updateMany(
+                        { _id: { $in: ticketsToDrop.map(t => t._id) } },
+                        { $set: { isActive: false } }
+                    );
+
+                    console.log(`🚌 Bus ${bus_id} at ${stand.name}. Dropping ${dropOffCount} passengers.`);
+                }
+                break; // Only check one stand at a time
+            }
+        }
+
+        // 3. Update Crowd Count if tickets processed
+        if (dropOffCount > 0) {
+            const currentCount = bus.currentPassengers || 0;
+            const newCount = Math.max(0, currentCount - dropOffCount);
+
+            // Recalculate level
+            let newLevel = 'Low';
+            if (newCount > 50) newLevel = 'High';
+            else if (newCount > 30) newLevel = 'Medium';
+
+            bus.currentPassengers = newCount;
+            bus.crowdLevel = newLevel;
+            await bus.save();
+        }
+
+        res.json({
+            success: true,
+            message: 'Location updated',
+            droppedOff: dropOffCount,
+            atStand: standName
+        });
     } catch (error) {
         console.error("Bus Location Error:", error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
+
+// Height Calculation Helper
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    var R = 6371; // Radius of the earth in km
+    var dLat = deg2rad(lat2 - lat1);
+    var dLon = deg2rad(lon2 - lon1);
+    var a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        ;
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    var d = R * c; // Distance in km
+    return d;
+}
+
+function deg2rad(deg) {
+    return deg * (Math.PI / 180)
+}
 
 // Passenger App: Get Active Buses
 app.get('/api/buses', async (req, res) => {
@@ -213,7 +285,7 @@ app.post('/api/conductor/profile', async (req, res) => {
 // Conductor App: Update Crowd Level & Passenger Count
 app.post('/api/bus/crowd', async (req, res) => {
     try {
-        const { busId, crowdLevel, passengerCount } = req.body;
+        const { busId, crowdLevel, passengerCount, maleCount, femaleCount } = req.body;
 
         if (!busId) {
             return res.status(400).json({ success: false, message: 'Bus ID required' });
@@ -238,6 +310,8 @@ app.post('/api/bus/crowd', async (req, res) => {
         const updateData = { lastUpdated: Date.now() };
         if (newCrowdLevel) updateData.crowdLevel = newCrowdLevel;
         if (finalCount !== undefined) updateData.currentPassengers = finalCount;
+        if (maleCount !== undefined) updateData.maleCount = maleCount;
+        if (femaleCount !== undefined) updateData.femaleCount = femaleCount;
 
         const updatedBus = await Bus.findOneAndUpdate(
             { busId: busId },
@@ -264,6 +338,36 @@ app.post('/api/ticket/verify', (req, res) => {
         res.json({ success: true, message: "Ticket Verified Successfully", valid: true });
     } else {
         res.json({ success: false, message: "Invalid or Expired Ticket", valid: false });
+    }
+});
+
+const Ticket = require('./models/Ticket');
+
+// Passenger App: Book Ticket (for Automated Drop-off)
+app.post('/api/ticket/book', async (req, res) => {
+    try {
+        const { busId, destination } = req.body;
+        if (!busId || !destination) {
+            return res.status(400).json({ success: false, message: 'Bus ID and Destination Required' });
+        }
+
+        const ticketId = `TICKET_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        const newTicket = new Ticket({
+            ticketId,
+            busId,
+            destination,
+            isActive: true
+        });
+
+        await newTicket.save();
+
+        // Optional: Increment Bus Count immediately (if not handled by Conductor)
+        // For now, we assume Conductor updates "Onboarding", but we track "Drop-off"
+
+        res.json({ success: true, message: 'Ticket Booked', ticket: newTicket });
+    } catch (error) {
+        console.error("Booking Error:", error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
@@ -374,7 +478,8 @@ app.post('/api/routes/suggest', async (req, res) => {
                     crowdScore === 100 ? "Low Crowd" : null,
                     speedScore > 80 ? "Fastest" : null,
                     etaMins < 5 ? "Arriving Soon" : null
-                ].filter(Boolean)
+                ].filter(Boolean),
+                currentPassengers: bus.currentPassengers || 0
             };
         });
 
@@ -473,7 +578,6 @@ app.get('/api/seed-stands', async (req, res) => {
             { name: "Makarpura Central Bus Station", lat: 22.249426999980358, lng: 73.19706849901746, isDepot: true },
             { name: "Nizampura S.T. Bus Depot", lat: 22.340034691881215, lng: 73.17893589504659, isDepot: true },
             { name: "Hari Nagar Bus Stop", lat: 22.315957, lng: 73.160974, isDepot: false },
-            { name: "INOX Bus Stop", lat: 15.499349094451468, lng: 73.82038001206644, isDepot: false }, // Note: Coordinates seem to be Goa? Keeping as requested.
             { name: "Dumad Bus Stop", lat: 22.367559, lng: 73.185396, isDepot: false },
             { name: "Vemali Bus Stop", lat: 22.346293904222428, lng: 73.20208385128092, isDepot: false },
             { name: "Ankhol Bus Stop", lat: 22.312203, lng: 73.28395, isDepot: false },

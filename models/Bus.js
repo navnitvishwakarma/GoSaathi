@@ -7,6 +7,8 @@ const busSchema = new mongoose.Schema({
     speed: { type: Number, default: 0 },
     crowdLevel: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Low' },
     currentPassengers: { type: Number, default: 0 },
+    maleCount: { type: Number, default: 0 },
+    femaleCount: { type: Number, default: 0 },
     routeId: { type: String },
     lastUpdated: { type: Date, default: Date.now }
 });
