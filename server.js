@@ -435,6 +435,18 @@ app.post('/api/bus/login', async (req, res) => {
     }
 });
 
+// Get All Buses (for Conductor App Selection)
+app.get('/api/buses/all', async (req, res) => {
+    try {
+        const buses = await BusAccount.find({}, 'busId'); // fetch only busId field
+        const busIds = buses.map(b => b.busId);
+        res.json({ success: true, buses: busIds });
+    } catch (error) {
+        console.error("Get Buses Error:", error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // Bus Stand Routes
 const BusStand = require('./models/BusStand');
 
