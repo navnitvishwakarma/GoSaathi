@@ -479,7 +479,8 @@ app.post('/api/routes/suggest', async (req, res) => {
                     speedScore > 80 ? "Fastest" : null,
                     etaMins < 5 ? "Arriving Soon" : null
                 ].filter(Boolean),
-                currentPassengers: bus.currentPassengers || 0
+                currentPassengers: bus.currentPassengers || 0,
+                femaleCount: bus.femaleCount || 0
             };
         });
 
