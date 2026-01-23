@@ -280,39 +280,43 @@ app.get('/api/routes', async (req, res) => {
 // Seed Routes (Vadodara)
 app.get('/api/routes/seed', async (req, res) => {
     try {
-        const routePoints7A = [
-            { lat: 22.3129, lng: 73.1812, name: "Central Bus Station" },
-            { lat: 22.3125, lng: 73.1815 },
-            { lat: 22.3100, lng: 73.1815 },
-            { lat: 22.3100, lng: 73.1850 }, // Turn 1
-            { lat: 22.3050, lng: 73.1850 },
-            { lat: 22.3000, lng: 73.1900 },
-            { lat: 22.2900, lng: 73.1900 },
-            { lat: 22.2800, lng: 73.1920 },
-            { lat: 22.2746, lng: 73.1916, name: "Manjalpur" }
+        // Route 1A: Vadodara Junction -> Waghodia GIDC
+        const routePoints1A = [
+            { lat: 22.310107655753864, lng: 73.18211593528066, name: "Vadodara Junction" },
+            { lat: 22.30863684679467, lng: 73.18841724821846, name: "Kala Ghoda Circle" },
+            { lat: 22.300094254370055, lng: 73.20553592280895, name: "Sur Sagar lake" },
+            { lat: 22.300246486254412, lng: 73.21096677203695, name: "Mandvi Gate" },
+            { lat: 22.300850675414004, lng: 73.23032173473486, name: "Umma Chowkadi" },
+            { lat: 22.300178192711872, lng: 73.23868661694327, name: "Vrundavan Chowkadi" },
+            { lat: 22.296264437767192, lng: 73.25546737367722, name: "Waghodia Chowkdi" },
+            { lat: 22.293104890196275, lng: 73.32095502801857, name: "Sumandeep" },
+            { lat: 22.287538347164414, lng: 73.36499295939116, name: "Parul University Main Gate" },
+            { lat: 22.293686752482376, lng: 73.38832022372544, name: "Waghodia GIDC" }
         ];
 
         const routes = [
             {
-                routeId: "7A",
-                name: "Station -> Manjalpur",
-                source: "Central Bus Station",
-                destination: "Manjalpur",
-                checkpoints: routePoints7A
+                routeId: "1A",
+                name: "Vadodara Junction -> Waghodia GIDC",
+                source: "Vadodara Junction",
+                destination: "Waghodia GIDC",
+                checkpoints: routePoints1A
             },
             {
-                routeId: "503",
-                name: "Manjalpur -> Station",
-                source: "Manjalpur",
-                destination: "Central Bus Station",
-                checkpoints: [...routePoints7A].reverse() // Reverse for return trip
+                routeId: "1A-R",
+                name: "Waghodia GIDC -> Vadodara Junction",
+                source: "Waghodia GIDC",
+                destination: "Vadodara Junction",
+                // Reverse the points for the return trip
+                checkpoints: [...routePoints1A].reverse()
             }
         ];
 
+        // Clear existing routes and insert new ones
         await Route.deleteMany({});
         await Route.insertMany(routes);
 
-        res.json({ success: true, message: 'Seeded Routes 7A & 503', routes });
+        res.json({ success: true, message: 'Seeded Route 1A & 1A-R successfully', routes });
     } catch (error) {
         console.error("Seed Route Error:", error);
         res.status(500).json({ success: false, message: 'Server error' });
