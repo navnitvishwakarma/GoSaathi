@@ -615,6 +615,97 @@ app.get('/', (req, res) => {
 // Export for Vercel
 module.exports = app;
 
+// --- Admin Dashboard Routes ---
+const { Trip, Driver, Incident, Maintenance, Announcement } = require('./models/AdminModels');
+
+// 1. Trip History
+app.get('/api/admin/history', async (req, res) => {
+    try {
+        const history = await Trip.find().sort({ date: -1 }).limit(100);
+        res.json({ success: true, data: history });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 2. Driver Performance
+app.get('/api/admin/drivers', async (req, res) => {
+    try {
+        const drivers = await Driver.find();
+        res.json({ success: true, data: drivers });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 3. Incidents
+app.get('/api/admin/incidents', async (req, res) => {
+    try {
+        const incidents = await Incident.find().sort({ timestamp: -1 });
+        res.json({ success: true, data: incidents });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 4. Maintenance
+app.get('/api/admin/maintenance', async (req, res) => {
+    try {
+        const records = await Maintenance.find();
+        res.json({ success: true, data: records });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 5. Communication
+app.get('/api/admin/communication', async (req, res) => {
+    try {
+        const msgs = await Announcement.find().sort({ timestamp: -1 });
+        res.json({ success: true, data: msgs });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Seed Data Endpoint (One - Click Setup) ---
+app.post('/api/admin/seed-all', async (req, res) => {
+    try {
+        // Clear old
+        await Trip.deleteMany({});
+        await Driver.deleteMany({});
+        await Incident.deleteMany({});
+        await Maintenance.deleteMany({});
+        await Announcement.deleteMany({});
+
+        // Seed Drivers
+        await Driver.insertMany([
+            { driverId: "D001", name: "Ramesh Kumar", rating: 4.8, punctualityScore: 96, totalTrips: 150, onTimeTrips: 144, violations: { speed: 2, harshBraking: 5, rashDriving: 0 } },
+            { driverId: "D002", name: "Suresh Patel", rating: 4.2, punctualityScore: 78, totalTrips: 120, onTimeTrips: 94, violations: { speed: 12, harshBraking: 8, rashDriving: 3 } },
+            { driverId: "D003", name: "Mahesh Yadav", rating: 4.9, punctualityScore: 99, totalTrips: 180, onTimeTrips: 178, violations: { speed: 0, harshBraking: 2, rashDriving: 0 } }
+        ]);
+
+        // Seed Trips
+        await Trip.insertMany([
+            { busId: "bus001", route: "Route 1A", driver: "Ramesh Kumar", date: new Date(), startTime: "08:00", endTime: "09:30", duration: 90, delay: 0, status: "completed", passengers: 45 },
+            { busId: "bus002", route: "Route 1A", driver: "Suresh Patel", date: new Date(), startTime: "08:30", endTime: "10:15", duration: 105, delay: 15, status: "delayed", passengers: 52 },
+            { busId: "bus003", route: "Route 1A", driver: "Mahesh Yadav", date: new Date(Date.now() - 86400000), startTime: "14:00", endTime: "15:30", duration: 90, delay: 0, status: "completed", passengers: 38 }
+        ]);
+
+        // Seed Incidents
+        await Incident.insertMany([
+            { type: "Delay", severity: "Low", busId: "bus002", driver: "Suresh Patel", location: "Kala Ghoda", description: "Heavy traffic jam causing 15 min delay" },
+            { type: "Breakdown", severity: "Critical", busId: "bus005", driver: "Rajiv Singh", location: "Waghodia GIDC", description: "Engine overheating, vehicle stalled", status: "Resolved" }
+        ]);
+
+        // Seed Maintenance
+        await Maintenance.insertMany([
+            { busId: "bus001", lastServiceDate: new Date('2025-12-01'), nextServiceDate: new Date('2026-03-01'), mileage: 15000, status: "Good" },
+            { busId: "bus002", lastServiceDate: new Date('2025-10-01'), nextServiceDate: new Date('2026-01-10'), mileage: 22000, status: "Overdue" }
+        ]);
+
+        // Seed Announcements
+        await Announcement.insertMany([
+            { title: "Fog Alert", message: "Heavy fog expected tomorrow morning. Drive carefully.", target: "Drivers", sender: "Admin" },
+            { title: "Service Update", message: "Route 1A frequency increased during peak hours.", target: "Passengers", sender: "Ops Team" }
+        ]);
+
+        res.json({ success: true, message: "Admin Dashboard Data Seeded Successfully!" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Start Server locally
 if (require.main === module) {
     app.listen(PORT, () => {
